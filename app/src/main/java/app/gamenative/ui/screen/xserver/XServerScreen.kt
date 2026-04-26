@@ -1368,19 +1368,35 @@ fun XServerScreen(
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
                 }
                 if (!handled && isKeyboard) {
-                    val isShiftEscPressed = it.event.keyCode == KeyEvent.KEYCODE_ESCAPE &&
-                            it.event.isShiftPressed &&
-                            it.event.action == KeyEvent.ACTION_DOWN &&
-                            it.event.repeatCount == 0
-                    if (isShiftEscPressed &&
-                        !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode) {
-                        gameBack()
-                        handled = true
-                    } else {
-                        if (it.event.device?.isVirtual == true) {
-                            handled = keyboard?.onVirtualKeyEvent(it.event) == true
+                    val areAllSpecialKeysUp = it.event.isCtrlPressed and it.event.isShiftPressed and it.event.isAltPressed && it.event.action == KeyEvent.ACTION_UP
+                    if (areAllSpecialKeysUp) {
+                        // Handing special key combination
+                        when (it.event.keyCode) {
+                            KeyEvent.KEYCODE_Z -> {
+                                // Toggles pointer exclusivity when in game view
+                                PluviaApp.touchpadView?.inputCaptureManager?.togglePointerCapture()
+                                handled = true
+                            }
+                            else -> {
+                                handled = false
+                            }
+                        }
+                    }
+                    if (!handled) {
+                        val isShiftEscPressed = it.event.keyCode == KeyEvent.KEYCODE_ESCAPE &&
+                                it.event.isShiftPressed &&
+                                it.event.action == KeyEvent.ACTION_DOWN &&
+                                it.event.repeatCount == 0
+                        if (isShiftEscPressed &&
+                            !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode) {
+                            gameBack()
+                            handled = true
                         } else {
-                            handled = keyboard?.onKeyEvent(it.event) == true
+                            if (it.event.device?.isVirtual == true) {
+                                handled = keyboard?.onVirtualKeyEvent(it.event) == true
+                            } else {
+                                handled = keyboard?.onKeyEvent(it.event) == true
+                            }
                         }
                     }
                 }
