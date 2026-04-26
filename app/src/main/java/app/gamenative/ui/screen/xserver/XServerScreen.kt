@@ -839,11 +839,8 @@ fun XServerScreen(
             !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
             !container.isTouchscreenMode) {
             PluviaApp.touchpadView?.postDelayed({
-                val view = PluviaApp.touchpadView
-                if (view != null) {
-                    view.requestFocus()
-                    view.requestPointerCapture()
-                }
+                val view = PluviaApp.touchpadView ?: return@postDelayed
+                view.inputCaptureManager.refreshPointerCapture()
             }, 100)
             true
         } else {
@@ -892,13 +889,11 @@ fun XServerScreen(
                     }
 
                     PluviaApp.touchpadView?.postDelayed({
-                        val view = PluviaApp.touchpadView
-                        if (view != null) {
-                            // Delay technically not required for the function to work but this can
-                            // race against tryCapturePointer() and end up capturing after release
-                            // was already called
-                            view.releasePointerCapture()
-                        }
+                        val view = PluviaApp.touchpadView ?: return@postDelayed
+                        // Delay technically not required for the function to work but this can
+                        // race against tryCapturePointer() and end up capturing after release
+                        // was already called
+                        view.inputCaptureManager.disablePointerCapture()
                     }, 100)
                 }
                 hasUpdatedScreenGamepad = false
@@ -961,6 +956,11 @@ fun XServerScreen(
                 resumeIfAllowedAfterOverlay()
             }
         }
+        PluviaApp.touchpadView?.postDelayed({
+            val view = PluviaApp.touchpadView ?: return@postDelayed
+            view.requestFocus()
+            view.inputCaptureManager.refreshPointerCapture()
+        }, 100)
         showQuickMenu = false
     }
 
@@ -1265,13 +1265,11 @@ fun XServerScreen(
         controllerManager.scanForDevices()
         hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
         PluviaApp.touchpadView?.postDelayed({
-            val view = PluviaApp.touchpadView
-            if (view != null) {
-                // Delay technically not required for the function to work but this can
-                // race against tryCapturePointer() and end up capturing after release
-                // was already called
-                view.releasePointerCapture()
-            }
+            val view = PluviaApp.touchpadView ?: return@postDelayed
+            // Delay technically not required for the function to work but this can
+            // race against tryCapturePointer() and end up capturing after release
+            // was already called
+            view.inputCaptureManager?.disablePointerCapture()
         }, 100)
 
         showQuickMenu = true
@@ -1418,7 +1416,6 @@ fun XServerScreen(
                                 areControlsVisible = false
                             }
                         }
-                        tryCapturePointer()
                     }
                 }
                 handled

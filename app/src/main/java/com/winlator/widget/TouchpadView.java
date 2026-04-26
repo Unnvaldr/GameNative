@@ -17,6 +17,7 @@ import android.widget.FrameLayout;
 import app.gamenative.R;
 import app.gamenative.data.TouchGestureConfig;
 import com.winlator.core.AppUtils;
+import com.winlator.inputcontrols.InputCaptureManager;
 import com.winlator.math.Mathf;
 import com.winlator.math.XForm;
 import com.winlator.renderer.ViewTransformation;
@@ -62,8 +63,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private Runnable delayedPress;
 
     private boolean pressExecuted;
-    private final boolean capturePointerOnExternalMouse;
-    private boolean pointerCaptureRequested;
+
+    private final InputCaptureManager inputCaptureManager;
 
     // Suppress spurious left-click after two-finger right-click tap
     private boolean suppressNextLeftTap;
@@ -197,23 +198,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         }
     }
 
-    @Override
-    protected void onDetachedFromWindow() {
-        // Full cleanup on detach: cancels timers, refresh runnable, releases
-        // any held drag/long-press/2F/3F-hold injections, and resets gesture
-        // state. Avoids leaking pressed buttons/keys when the view is removed
-        // mid-gesture (e.g., game exit while a hold is active).
-        handleTsCancel();
-        super.onDetachedFromWindow();
-    }
-
     // Left/right click drag tracking
     private boolean leftClickDragButtonDown;
     private boolean rightClickDragButtonDown;
 
     public TouchpadView(Context context, XServer xServer, boolean capturePointerOnExternalMouse) {
         super(context);
-        this.capturePointerOnExternalMouse = capturePointerOnExternalMouse;
         this.fingers = new Finger[4];
         this.numFingers = (byte) 0;
         this.sensitivity = 1.0f;
@@ -237,17 +227,39 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         int screenHeight = AppUtils.getScreenHeight();
         ScreenInfo screenInfo = xServer.screenInfo;
         updateXform(screenWidth, screenHeight, screenInfo.width, screenInfo.height);
+        this.inputCaptureManager = new InputCaptureManager(this);
         if (capturePointerOnExternalMouse) {
+            inputCaptureManager.setCaptureEnabled(true);
             setFocusableInTouchMode(true);
             setOnCapturedPointerListener(this);
         }
     }
 
+    public InputCaptureManager getInputCaptureManager() {
+        return inputCaptureManager;
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        // allow re-capture after app returns from background
-        if (hasFocus) pointerCaptureRequested = false;
+        this.inputCaptureManager.onWindowFocusChanged(hasFocus);
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        this.inputCaptureManager.onAttachedToWindow();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        // Full cleanup on detach: cancels timers, refresh runnable, releases
+        // any held drag/long-press/2F/3F-hold injections, and resets gesture
+        // state. Avoids leaking pressed buttons/keys when the view is removed
+        // mid-gesture (e.g., game exit while a hold is active).
+        handleTsCancel();
+        super.onDetachedFromWindow();
+        this.inputCaptureManager.onDetachedFromWindow();
     }
 
     private static StateListDrawable createTransparentBackground() {
